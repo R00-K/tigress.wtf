@@ -1001,6 +1001,7 @@ typedef unsigned long DWORD;
 typedef unsigned long long ULONG_PTR;
 typedef ULONG_PTR SOCKET;
 typedef unsigned long long SIZE_T;
+struct sockaddr;
 typedef struct {
     unsigned short wVersion;
     unsigned short wHighVersion;
@@ -1017,14 +1018,14 @@ typedef struct addrinfo {
     int ai_protocol;
     SIZE_T ai_addrlen;
     char *ai_canonname;
-    void *ai_addr;
+    struct sockaddr *ai_addr;
     struct addrinfo *ai_next;
 } addrinfo;
 int WSAStartup(unsigned short version, WSADATA *data);
 int WSACleanup(void);
 int WSAGetLastError(void);
 SOCKET socket(int af, int type, int protocol);
-int connect(SOCKET s, const void *name, int namelen);
+int connect(SOCKET s, const struct sockaddr *name, int namelen);
 int send(SOCKET s, const char *buf, int len, int flags);
 int recv(SOCKET s, char *buf, int len, int flags);
 int shutdown(SOCKET s, int how);
