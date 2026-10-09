@@ -1,0 +1,19 @@
+x86_64-w64-mingw32-gcc \
+  -E -P \
+  -I./memory \
+  -I./network \
+  -I./handler \
+  -I./payload \
+  tigress_input.c \
+  -o merged.c
+
+
+
+
+tigress \
+  --Environment=x86_64:Windows:Gcc \
+  --Compiler=x86_64-w64-mingw32-gcc \
+  --Transform=Virtualize \
+  --Functions=main,allocate_test_memory,copy_test_data,inspect_memory,free_test_memory,initialize_network,connect_server,send_request,receive_response,close_connection,cleanup_network,parse_response,process_response,test_payload \
+  merged.c \
+  --out=obf_client.c
