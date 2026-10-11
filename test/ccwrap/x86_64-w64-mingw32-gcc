@@ -1,0 +1,10 @@
+#!/bin/bash
+# Project-local wrapper: injects -I<project>/compat ahead of the real
+# x86_64-w64-mingw32-gcc so Tigress's preprocessing pass picks up the
+# stub AVX-512 FP16/BF16 headers instead of GCC 13's real ones (which
+# use _Float16 "0.0f16" literal syntax Tigress's parser rejects).
+#
+# The final MinGW build of the Tigress-generated output does NOT use
+# this wrapper, so it gets the real, fully-correct system headers.
+REAL=/usr/bin/x86_64-w64-mingw32-gcc
+exec "$REAL" -I"/home/godwin/Desktop/tigress.wtf/test/compat" "$@"

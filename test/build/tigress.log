@@ -1,0 +1,5 @@
+<<Tigress>> Settings:
+<<Tigress>>     --Environment=x86_64:Windows:Gcc:1
+<<Tigress>>     --Compiler=x86_64-w64-mingw32-gcc
+<<Tigress>>     CC_OPTIONS=
+<<Tigress>>     Types: built-in model for x86_64:Windows:Gcc:1
