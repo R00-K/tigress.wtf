@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "memory_win_compat.h"
+#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 

@@ -1,0 +1,4 @@
+q0 e q1
+q0 e q3
+q1 e q2
+q3 b q2

@@ -26,9 +26,7 @@ int calculate(int a, int b) {
     return result;
 }
 
-int main(void) {
-    int result = calculate(10, 20);
-    printf("Result: %d\n", result);
-    return 0;
+void main(void) {
+
 }
 

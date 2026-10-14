@@ -91,18 +91,69 @@
 /usr/share/mingw-w64/include/poppack.h:7:9: warning: ‘#pragma pack (pop)’ encountered without matching ‘#pragma pack (push)’ [-Wpragmas]
     7 | #pragma pack(pop)
       |         ^~~~
-/usr/share/mingw-w64/include/winnt.h: In function ‘NtCurrentTeb’:
-/usr/share/mingw-w64/include/winnt.h:10013:48: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
-10013 |     FORCEINLINE struct _TEB *NtCurrentTeb(VOID) { return (struct _TEB *)__readgsqword(FIELD_OFFSET(NT_TIB,Self)); }
-      |                                                ^
-/usr/share/mingw-w64/include/stdio.h: In function ‘calculate’:
-/usr/share/mingw-w64/include/stdio.h:433:61: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
-  433 |     if (__retval >= 0)
-      |                                                             ^
-/usr/share/mingw-w64/include/stdio.h:471:57: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
-  471 | int vsnprintf (char *__stream, size_t __n, const char *__format, __builtin_va_list __local_argv)
-      |                                                         ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h: In function ‘parse_response’:
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:1081:62: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+ 1081 | 
+      |                                                              ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:1102:66: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+ 1102 | __INTRINSICS_USEINLINE
+      |                                                                  ^
+/usr/share/mingw-w64/include/ws2tcpip.h: In function ‘free_test_memory’:
+/usr/share/mingw-w64/include/ws2tcpip.h:106:68: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+  106 | #define IN6_IS_ADDR_LINKLOCAL IN6_IS_ADDR_LINKLOCAL
+      |                                                                    ^
+/usr/share/mingw-w64/include/ws2tcpip.h:149:64: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  149 |   int ai_socktype;
+      |                                                                ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h: In function ‘find_header_end’:
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:992:63: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  992 | #endif
+      |                                                               ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:996:67: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+  996 | #if __INTRINSIC_PROLOG(__writecr4)
+      |                                                                   ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h: In function ‘inspect_memory’:
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:873:66: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+  873 | __MINGW_EXTENSION __INTRINSICS_USEINLINE
+      |                                                                  ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:881:62: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  881 | #if !__has_builtin(_BitScanForward64)
+      |                                                              ^
+/usr/share/mingw-w64/include/stdio.h: In function ‘receive_response’:
+/usr/share/mingw-w64/include/stdio.h:1157:22: warning: assignment to ‘long unsigned int *’ from incompatible pointer type ‘long long unsigned int *’ [-Wincompatible-pointer-types]
+ 1157 | int vfwprintf (FILE *__stream, const wchar_t *__format, __builtin_va_list __local_argv)
+      |                      ^
+/usr/share/mingw-w64/include/stdio.h:1181:64: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+ 1181 | }
+      |                                                                ^
+/usr/share/mingw-w64/include/stdio.h:1368:68: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+ 1368 |   {
+      |                                                                    ^
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h: In function ‘main’:
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:11199:52: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+/usr/share/mingw-w64/include/psdk_inc/intrin-impl.h:11240:56: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+/usr/share/mingw-w64/include/ws2tcpip.h: In function ‘allocate_test_memory’:
+/usr/share/mingw-w64/include/ws2tcpip.h:144:72: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+  144 | #define EAI_NODATA 11004 /* WSANO_DATA */
+      |                                                                        ^
+/usr/share/mingw-w64/include/ws2tcpip.h:211:68: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  211 | 
+      |                                                                    ^
+/usr/share/mingw-w64/include/winnt.h: In function ‘copy_test_data’:
+/usr/share/mingw-w64/include/winnt.h:10033:66: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+10033 |     PVOID GetCurrentFiber (VOID);
+      |                                                                  ^
+/usr/share/mingw-w64/include/winnt.h:10193:69: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+10193 |         TransactionManagerRecoveryInformation = 4,
+      |                                                                     ^
 /usr/share/mingw-w64/include/winnt.h: In function ‘GetCurrentFiber’:
 /usr/share/mingw-w64/include/winnt.h:10014:48: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
 10014 |     FORCEINLINE PVOID GetCurrentFiber(VOID) { return(PVOID)__readgsqword(FIELD_OFFSET(NT_TIB,FiberData)); }
+      |                                                ^
+/usr/share/mingw-w64/include/winbase.h: In function ‘connect_server’:
+/usr/share/mingw-w64/include/winbase.h:3630:62: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+/usr/share/mingw-w64/include/winbase.h:3652:66: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+/usr/share/mingw-w64/include/winnt.h: In function ‘NtCurrentTeb’:
+/usr/share/mingw-w64/include/winnt.h:10013:48: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+10013 |     FORCEINLINE struct _TEB *NtCurrentTeb(VOID) { return (struct _TEB *)__readgsqword(FIELD_OFFSET(NT_TIB,Self)); }
       |                                                ^

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-patch_pointer_width.py <generated.c> <patched.c> <function_name>
+patch_pointer_width.py <generated.c> <patched.c> <fn1[,fn2,...]>
 
-Validates that a Tigress-generated Virtualize output for <function_name>
-has EXACTLY the known pointer-width defect shape (see compat/README.md,
-"Part 2"), then applies the narrowly-scoped unsigned-long -> unsigned-long-
-long fix for that function only. Refuses (nonzero exit, clear message) if
-the generated code's shape differs from what was audited, rather than
-guessing or patching blindly.
+For each named function (comma-separated list), validates that Tigress's
+Virtualize output has the known pointer-width defect shape (see
+compat/README.md Part 2) and applies the narrowly-scoped
+unsigned long -> unsigned long long fix for the formalGlobalInit*
+variables used to round-trip formal-parameter addresses through the
+VM's $locals buffer.
 
-This never does a global `unsigned long` -> `unsigned long long` replace.
-It only rewrites the exact matched declaration/cast/read-back snippets for
-the formal-parameter pointer round-trip of <function_name>.
+Handles multiple functions in a single pass.  Refuses (nonzero exit) if
+a store-cast pair exists but no matching declaration is found, or if a
+read-back site count is not exactly 1 per function that has store-casts.
+Functions with no by-ref parameter slots (void, or not virtualized) are
+skipped silently.  The script is a no-op if everything is already
+unsigned long long.
 """
 import re
 import sys
@@ -24,167 +27,180 @@ def fail(msg):
 
 def main():
     if len(sys.argv) != 4:
-        fail("usage: patch_pointer_width.py <in.c> <out.c> <function_name>")
-    in_path, out_path, fn = sys.argv[1], sys.argv[2], sys.argv[3]
+        fail("usage: patch_pointer_width.py <in.c> <out.c> <fn1[,fn2,...]>")
+    in_path, out_path, fn_arg = sys.argv[1], sys.argv[2], sys.argv[3]
+    functions = [f.strip() for f in fn_arg.split(",") if f.strip()]
 
     with open(in_path, "r", encoding="utf-8", errors="surrogateescape") as f:
         src = f.read()
 
-    # The Tigress-generated identifiers embed a random tag, e.g.
-    # _TIG_VZ_rYXd_1_calculate_$locals -- discover that tag for this
-    # function rather than assuming it.
-    locals_re = re.compile(
-        r"_TIG_VZ_([A-Za-z0-9]+)_1_" + re.escape(fn) + r"_\$locals\b"
-    )
-    tags = set(locals_re.findall(src))
-    if len(tags) == 0:
-        fail(
-            f"no '_TIG_VZ_<tag>_1_{fn}_$locals' identifier found - "
-            f"was --Functions={fn} actually virtualized? Generated file "
-            f"may be from a different Tigress run/version."
-        )
-    if len(tags) > 1:
-        fail(
-            f"found {len(tags)} distinct _TIG_VZ_<tag>_1_{fn}_$locals "
-            f"identifiers ({sorted(tags)}) - expected exactly 1. Refusing "
-            f"to guess which one to patch."
-        )
-    tag = next(iter(tags))
-    locals_name = f"_TIG_VZ_{tag}_1_{fn}_$locals"
-    pc_name = f"_TIG_VZ_{tag}_1_{fn}_$pc"
-
-    # --- locate the declaration of the round-trip temp (any width) ---
+    # Build map: var_name -> decl_match for every formalGlobalInitN declaration
     decl_re = re.compile(
-        r"(?P<indent>[ \t]*)(?P<type>unsigned long(?: long)?) \*(?P<var>formalGlobalInit\d+) ;\n"
+        r"(?P<indent>[ \t]*)(?P<type>unsigned long(?: long)?) \*"
+        r"(?P<var>formalGlobalInit\d+) ;\n"
     )
-    decls = list(decl_re.finditer(src))
-    if len(decls) == 0:
-        fail(
-            "no 'unsigned long [long] *formalGlobalInitN ;' declaration "
-            "found anywhere in the file - generated code shape has "
-            "changed; nothing to validate against. Not patching."
-        )
-    if len(decls) > 1:
-        fail(
-            f"found {len(decls)} formalGlobalInit* declarations - "
-            f"expected exactly 1 for a single-parameter-pair function "
-            f"like {fn}. Refusing to guess; patch this script first."
-        )
-    decl = decls[0]
-    var = decl.group("var")
-    cur_type = decl.group("type")
+    all_decls = {m.group("var"): m for m in decl_re.finditer(src)}
 
-    if cur_type == "unsigned long long":
+    # Accumulate edits across all functions
+    vars_to_patch = {}       # var_name -> decl_match
+    cast_pairs_to_patch = [] # store-cast pair match objects
+    reads_to_patch = []      # read-back match objects
+
+    functions_found = []
+    functions_skipped = []
+
+    for fn in functions:
+        locals_re = re.compile(
+            r"_TIG_VZ_([A-Za-z0-9]+)_1_" + re.escape(fn) + r"_\$locals\b"
+        )
+        tags = set(locals_re.findall(src))
+        if not tags:
+            functions_skipped.append(fn)
+            continue
+        if len(tags) > 1:
+            fail(
+                f"found {len(tags)} distinct _TIG_VZ_<tag>_1_{fn}_$locals "
+                f"identifiers ({sorted(tags)}) - expected exactly 1. "
+                "Refusing to guess which to patch."
+            )
+        tag = next(iter(tags))
+        locals_name = f"_TIG_VZ_{tag}_1_{fn}_$locals"
+        pc_name    = f"_TIG_VZ_{tag}_1_{fn}_$pc"
+        functions_found.append((fn, locals_name, pc_name))
+
+        # Find store-cast pairs for this function's $locals
+        cast_re = re.compile(
+            r"(?P<var>formalGlobalInit\d+) = \(unsigned long \*\)\(\(char \*\)\(\(void \*\)\("
+            + re.escape(locals_name)
+            + r"\)\) \+ (?P<offset>\d+)\);\n"
+            r"[ \t]*\*(?P=var) = \(unsigned long \)\(& (?P<ident>\w+)\);\n"
+        )
+        pairs = list(cast_re.finditer(src))
+        if not pairs:
+            # Virtualized but no by-ref parameter slots - nothing to patch here
+            continue
+
+        # Validate offsets are distinct and 8-byte aligned
+        offsets = [int(m.group("offset")) for m in pairs]
+        if len(set(offsets)) != len(offsets):
+            fail(f"{fn}: store offsets are not distinct: {offsets}. Not patching.")
+        for off in offsets:
+            if off % 8 != 0:
+                fail(f"{fn}: store offset {off} is not 8-byte aligned. Not patching.")
+
+        # Check for overlap with the operand-stack node-array region
+        region_re = re.compile(
+            r"\(\*\(\(union [A-Za-z0-9_$]+ \(\*\)\[1\]\[32\]\)\("
+            + re.escape(locals_name)
+            + r" \+ (?P<start>\d+)\)\)\)\[0\];"
+        )
+        region_matches = list(region_re.finditer(src))
+        if region_matches:
+            region_start = int(region_matches[0].group("start"))
+            highest_slot_end = max(offsets) + 8
+            if highest_slot_end > region_start:
+                fail(
+                    f"{fn}: parameter slots end at byte {highest_slot_end} but "
+                    f"node-array region starts at {region_start} - OVERLAP. "
+                    "Manual review required."
+                )
+        else:
+            print(
+                f"PATCH-WARN: {fn}: could not locate node-array region start "
+                "(non-fatal; proceeding since store/read shape matched).",
+                file=sys.stderr,
+            )
+
+        for m in pairs:
+            var = m.group("var")
+            if var not in all_decls:
+                fail(
+                    f"{fn}: store-cast pair references '{var}' but no "
+                    f"'unsigned long [long] *{var} ;' declaration found."
+                )
+            if "unsigned long long" in m.group(0):
+                continue  # already patched
+            cast_pairs_to_patch.append(m)
+            decl = all_decls[var]
+            if decl.group("type") == "unsigned long":
+                vars_to_patch[var] = decl
+
+        # Read-back site(s) - at most 1 expected per function with store-cast
+        # pairs.  Functions with no formal parameters (e.g. main(void)) produce
+        # store-cast pairs to stash local variable addresses but emit 0
+        # read-back sites, so 0 is valid; > 1 is unexpected.
+        read_re = re.compile(
+            r"\(char \*\)\*\(\(unsigned long \*\)\("
+            + re.escape(locals_name)
+            + r" \+ \*\(\(int \*\)"
+            + re.escape(pc_name)
+            + r"\[0\]\)\)\);\n"
+        )
+        reads = list(read_re.finditer(src))
+        if len(reads) > 1:
+            fail(
+                f"{fn}: expected at most 1 read-back site, found {len(reads)}. "
+                "Not patching."
+            )
+        for r in reads:
+            if "unsigned long long" not in r.group(0):
+                reads_to_patch.append(r)
+
+    if not functions_found:
+        fail(
+            "none of the specified functions had _TIG_VZ_*_1_fn_$locals "
+            "symbols in the generated file. Was --Functions= correct?"
+        )
+
+    if not vars_to_patch and not cast_pairs_to_patch and not reads_to_patch:
         print(
-            f"PATCH-SKIP: '{var}' is already declared 'unsigned long long' "
-            f"(already fixed, or a newer Tigress build no longer has the "
-            f"bug). Copying input unchanged."
+            "PATCH-SKIP: all formalGlobalInit* sites are already "
+            "'unsigned long long'. Copying input unchanged."
         )
         with open(out_path, "w", encoding="utf-8", errors="surrogateescape") as f:
             f.write(src)
         return
-    if cur_type != "unsigned long":
-        fail(f"unexpected declared type '{cur_type}' for '{var}'.")
 
-    # --- locate the store-cast + store-value pairs for this var ---
-    cast_re = re.compile(
-        re.escape(var)
-        + r" = \(unsigned long \*\)\(\(char \*\)\(\(void \*\)\("
-        + re.escape(locals_name)
-        + r"\)\) \+ (?P<offset>\d+)\);\n"
-        + r"[ \t]*\*"
-        + re.escape(var)
-        + r" = \(unsigned long \)\(& (?P<ident>\w+)\);\n"
-    )
-    pairs = list(cast_re.finditer(src))
-    if len(pairs) == 0:
-        fail(
-            f"declaration for '{var}' found, but no matching "
-            f"'{var} = (unsigned long *)(... {locals_name} ... + N); "
-            f"*{var} = (unsigned long)(&X);' store pair found. Generated "
-            f"shape differs from the audited defect. Not patching."
-        )
-
-    offsets = [int(m.group("offset")) for m in pairs]
-    idents = [m.group("ident") for m in pairs]
-    if len(set(offsets)) != len(offsets):
-        fail(f"store offsets are not distinct: {offsets}. Refusing to patch.")
-    for off in offsets:
-        if off % 8 != 0:
-            fail(f"store offset {off} for '{var}' is not 8-byte aligned.")
-
-    # --- locate the operand-stack / node-array region start, to prove
-    #     the parameter slots and the stack array don't overlap ---
-    region_re = re.compile(
-        r"\(\*\(\(union [A-Za-z0-9_$]+ \(\*\)\[1\]\[32\]\)\("
-        + re.escape(locals_name)
-        + r" \+ (?P<start>\d+)\)\)\)\[0\];"
-    )
-    region_matches = list(region_re.finditer(src))
-    if region_matches:
-        region_start = int(region_matches[0].group("start"))
-        highest_slot_end = max(offsets) + 8
-        if highest_slot_end > region_start:
-            fail(
-                f"parameter pointer slots end at byte {highest_slot_end} "
-                f"but the operand-stack node array starts at byte "
-                f"{region_start} - OVERLAP detected. Not patching; this "
-                f"needs manual review, not an automated fix."
-            )
-    else:
-        print(
-            "PATCH-WARN: could not locate the node-array region start to "
-            "double check for overlap (non-fatal; proceeding, since the "
-            "store/read shape itself still matched exactly).",
-            file=sys.stderr,
-        )
-
-    # --- locate the single read-back site for this var's buffer ---
-    read_re = re.compile(
-        r"\(char \*\)\*\(\(unsigned long \*\)\("
-        + re.escape(locals_name)
-        + r" \+ \*\(\(int \*\)"
-        + re.escape(pc_name)
-        + r"\[0\]\)\)\);\n"
-    )
-    reads = list(read_re.finditer(src))
-    if len(reads) != 1:
-        fail(
-            f"expected exactly 1 read-back site of the form "
-            f"'(char *)*((unsigned long *)({locals_name} + *((int *)"
-            f"{pc_name}[0])));', found {len(reads)}. Not patching."
-        )
-
-    # --- all checks passed: apply the narrowly scoped rewrite ---
-    # Edit only the exact matched spans (declaration, each store-cast
-    # pair, each read-back site), applied back-to-front so earlier
-    # offsets stay valid as the string length changes.
-    out = src
+    # Build edit list and apply back-to-front so earlier offsets stay valid
     edits = []
-    edits.append((decl.start(), decl.end(), decl.group(0).replace(
-        "unsigned long *", "unsigned long long *", 1)))
-    for m in pairs:
-        new_text = m.group(0).replace(
-            "unsigned long *", "unsigned long long *", 1
-        ).replace(
-            "unsigned long )(&", "unsigned long long )(&", 1
+
+    for decl in vars_to_patch.values():
+        edits.append((
+            decl.start(), decl.end(),
+            decl.group(0).replace("unsigned long *", "unsigned long long *", 1),
+        ))
+
+    for m in cast_pairs_to_patch:
+        new_text = (
+            m.group(0)
+            .replace("unsigned long *", "unsigned long long *", 1)
+            .replace("unsigned long )(& ", "unsigned long long )(& ", 1)
         )
         edits.append((m.start(), m.end(), new_text))
-    for m in reads:
-        new_text = m.group(0).replace("unsigned long *", "unsigned long long *", 1)
+
+    for m in reads_to_patch:
+        new_text = m.group(0).replace(
+            "unsigned long *", "unsigned long long *", 1
+        )
         edits.append((m.start(), m.end(), new_text))
 
     edits.sort(key=lambda e: e[0], reverse=True)
+    out = src
     for start, end, text in edits:
         out = out[:start] + text + out[end:]
 
     with open(out_path, "w", encoding="utf-8", errors="surrogateescape") as f:
         f.write(out)
 
+    fn_names = [f for f, _, _ in functions_found]
     print(
-        f"PATCH-OK: '{var}' (offsets {sorted(offsets)} for "
-        f"{idents}) and its 1 read-back site rewritten to "
-        f"'unsigned long long' in {out_path}"
+        f"PATCH-OK: {len(vars_to_patch)} declaration(s), "
+        f"{len(cast_pairs_to_patch)} store-cast pair(s), "
+        f"{len(reads_to_patch)} read-back site(s) rewritten to "
+        f"'unsigned long long' across {len(fn_names)} function(s) "
+        f"({', '.join(fn_names)}). "
+        f"Skipped (not virtualized / no params): "
+        f"{', '.join(functions_skipped) if functions_skipped else 'none'}."
     )
 
 
