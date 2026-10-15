@@ -194,7 +194,11 @@ if ! x86_64-w64-mingw32-gcc "$MINGW_OPT" -o "$FINAL_EXE" "$FINAL_C" "${MINGW_LIB
     tail -40 "$FINAL_COMPILE_LOG" >&2
     die "Final compile failed - see $FINAL_COMPILE_LOG"
 fi
-grep -qi '\berror\b' "$FINAL_COMPILE_LOG" \
+# Match only real GCC diagnostics ("path:line:col: error: ..." / "fatal error:"),
+# not arbitrary occurrences of the word 'error' — GCC warnings print macro
+# source lines like '#define WSAMAKEASYNCREPLY(buflen,error) ...' which a
+# naive \berror\b grep falsely treats as a compile error.
+grep -qE ': (fatal )?error:' "$FINAL_COMPILE_LOG" \
     && { cat "$FINAL_COMPILE_LOG" >&2; die "Compiler reported errors despite exit 0."; }
 [ -x "$FINAL_EXE" ] || die "$FINAL_EXE was not produced."
 info "OK: compiled ($(grep -ci warning "$FINAL_COMPILE_LOG" || true) warnings, MinGW header noise expected)."
