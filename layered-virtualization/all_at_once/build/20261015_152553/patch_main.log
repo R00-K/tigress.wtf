@@ -1,2 +1,0 @@
-PATCH-WARN: no interpreter read-back site found for 'main' - it reads its $locals slots directly (already 64-bit); patching the store side only.
-PATCH-OK: 3 store pair(s) for 'main' (offsets [0, 8, 16]) and 0 read-back(s) rewritten to 'unsigned long long'; PlusPI sign-extension: 0 occurrence(s).

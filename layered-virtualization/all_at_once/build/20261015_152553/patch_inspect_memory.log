@@ -1,1 +1,0 @@
-PATCH-OK: 2 store pair(s) for 'inspect_memory' (offsets [0, 8]) and 1 read-back(s) rewritten to 'unsigned long long'; PlusPI sign-extension: 0 occurrence(s).

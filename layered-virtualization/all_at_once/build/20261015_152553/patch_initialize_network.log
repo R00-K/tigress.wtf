@@ -1,2 +1,0 @@
-PATCH-SKIP: no formalGlobalInit* store pairs found for 'initialize_network' in _TIG_VZ_B8bp_1_initialize_network_$locals - function has no pointer parameters.
-PATCH-BUG5: operand-stack 'unsigned long' widened to 64-bit (15 union member(s), 28 cast site(s)) - see the Bug 5 semantics note in this script.

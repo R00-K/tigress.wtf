@@ -1,1 +1,0 @@
-PATCH-OK: 4 store pair(s) for 'parse_response' (offsets [0, 8, 16, 24]) and 1 read-back(s) rewritten to 'unsigned long long'; PlusPI sign-extension: 1 occurrence(s).

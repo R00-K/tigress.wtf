@@ -1,1 +1,0 @@
-PATCH-SKIP: no formalGlobalInit* store pairs found for 'test_payload' in _TIG_VZ_B8bp_1_test_payload_$locals - function has no pointer parameters.
