@@ -1,0 +1,13 @@
+#!/bin/bash
+# Project-local wrapper: injects -I<this folder>/compat ahead of the real
+# x86_64-w64-mingw32-gcc so Tigress's preprocessing/parse pass picks up the
+# stub SIMD headers instead of GCC 13's real ones (which use syntax Tigress's
+# CIL-based parser rejects).
+#
+# The final MinGW build of the Tigress-generated output does NOT use this
+# wrapper, so it gets the real, fully-correct system headers.
+#
+# Self-locating: works regardless of where the folder is checked out.
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REAL=/usr/bin/x86_64-w64-mingw32-gcc
+exec "$REAL" -I"$HERE/compat" "$@"
