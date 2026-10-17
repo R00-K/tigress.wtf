@@ -74,7 +74,7 @@ etc. - real Windows API symbols, not stubs).
 ## Commands
 
 ```bash
-cd ~/Desktop/tigress.wtf/test
+cd ~/Desktop/tigress.wtf/layered-virtualization
 
 # 1. Run Tigress with the wrapper compiler shadowing the real one on PATH.
 PATH="$PWD/ccwrap:$PATH" tigress \
@@ -222,7 +222,7 @@ are not part of this bug.
 ### Rebuild and verification
 
 ```bash
-cd ~/Desktop/tigress.wtf/test
+cd ~/Desktop/tigress.wtf/layered-virtualization
 x86_64-w64-mingw32-gcc -O0 -o windows_api_test_obf.exe windows_api_test_obf.c
 WINEDEBUG=-all wine windows_api_test_obf.exe
 ```

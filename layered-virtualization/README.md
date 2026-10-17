@@ -28,7 +28,7 @@ under Wine 9.0.
 | Tigress | 4.2.0, at `/usr/local/bin/tigress` |
 | Cross-compiler | `x86_64-w64-mingw32-gcc`, GCC 13.2 (also tested: `-posix` variant) |
 | Target | genuine Windows x64 PE executable |
-| Project directory | `~/Desktop/tigress.wtf/test` |
+| Project directory | `~/Desktop/tigress.wtf/layered-virtualization` |
 | Source file | `windows_api_test.c` — includes `<windows.h>` and `<stdio.h>`, defines `calculate(int a, int b) { return a + b; }` called from `main()` |
 
 The command being run throughout:
