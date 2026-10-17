@@ -1,1 +1,13 @@
-test/build
+
+
+build/
+**/build/
+dist/
+out/
+cmake-build-*/
+target/
+__pycache__/
+*.pyc
+*.pyo
+*.so
+*.dylib
